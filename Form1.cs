@@ -22,7 +22,8 @@ namespace AstronomyPicOfTheDay
         private ContextMenu trayMenu;
         private System.Timers.Timer t;
 
-        private PictureOfTheDay p;
+        private PictureOfTheDay oldP;
+        private PictureOfTheDay newP;
 
         private string API_KEY = "YOUR_NASA_API_KEY";
 
@@ -36,7 +37,8 @@ namespace AstronomyPicOfTheDay
 
             trayMenu = new ContextMenu();
             trayMenu.MenuItems.Add("Show Explanation", ShowExplication);
-            trayMenu.MenuItems.Add("Exit", OnExit);
+            trayMenu.MenuItems.Add("Refresh", Refresh);
+            trayMenu.MenuItems.Add("Exit", OnExit);            
 
             trayIcon = new NotifyIcon();
             trayIcon.Text = "APOD";
@@ -68,16 +70,17 @@ namespace AstronomyPicOfTheDay
         private void InitializeRoutine()
         {
             if (File.Exists(@"C:\pic.xml"))
-                p = utils.ReadFromFile();
+                oldP = utils.ReadFromFile();
             else
             {
-                p = new PictureOfTheDay();
-                p.date = "10/10/1990";
+                oldP = new PictureOfTheDay();
+                oldP.date = "10/10/1990";
+                oldP.url = "lolz";
             }
 
             string dateNow = DateTime.Now.ToString("dd/MM/yyyy");
 
-            if (utils.CompareDates(p.date, dateNow))
+            if (utils.CompareDates(oldP.date, dateNow))
             {
                 /* A day has passed, get picture again */
                 string url = "https://api.nasa.gov/planetary/apod?hd=True&concept_tags=False&api_key=" + API_KEY;
@@ -87,20 +90,25 @@ namespace AstronomyPicOfTheDay
                 {
                     var picJson = JsonConvert.DeserializeObject<dynamic>(response);
 
-                    p.url = picJson["hdurl"];
-                    p.media_type = picJson["media_type"];
-                    p.explanation = picJson["explanation"];
-                    p.title = picJson["title"];
-                    p.date = DateTime.Now.ToString("dd/MM/yyyy");
+                    newP = new PictureOfTheDay();
 
-                    if (!p.media_type.Equals("image"))
+                    newP.url = picJson["hdurl"];
+                    newP.media_type = picJson["media_type"];
+                    newP.explanation = picJson["explanation"];
+                    newP.title = picJson["title"];
+                    newP.date = DateTime.Now.ToString("dd/MM/yyyy");
+
+                    if (!newP.media_type.Equals("image"))
                         return;
 
-                    p.DownloadFromUrl();
+                    if (newP.url.Equals(oldP.url))
+                        return;
+
+                    newP.DownloadFromUrl();
                     if (File.Exists(@"C:\APOD.jpg"))
                         utils.SetWallpaper();
 
-                    utils.WriteToFile(p);
+                    utils.WriteToFile(newP);
                 }
             }
         }
@@ -113,8 +121,13 @@ namespace AstronomyPicOfTheDay
 
         private void ShowExplication(object sender, EventArgs e)
         {
-            ExplicationForm ef = new ExplicationForm(p);
+            ExplicationForm ef = new ExplicationForm(newP);
             ef.Show();
+        }
+
+        private void Refresh(object sender, EventArgs e)
+        {
+            InitializeRoutine();
         }
 
         private void OnExit(object sender, EventArgs e)
