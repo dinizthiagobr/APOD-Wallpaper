@@ -83,7 +83,7 @@ namespace AstronomyPicOfTheDay
             if (utils.CompareDates(oldP.date, dateNow))
             {
                 /* A day has passed, get picture again */
-                string url = "https://api.nasa.gov/planetary/apod?hd=True&concept_tags=False&api_key=" + API_KEY;
+                string url = "https://api.nasa.gov/planetary/apod?api_key=" + API_KEY;
                 string response = utils.SendGet(url);
 
                 if (!string.IsNullOrEmpty(response))
@@ -110,6 +110,14 @@ namespace AstronomyPicOfTheDay
 
                     utils.WriteToFile(newP);
                 }
+            } else
+            {
+                /* A day hasn't passed, just set the picture as wallpaper */
+                if (File.Exists(@"C:\APOD.jpg"))
+                {
+                    newP = utils.ReadFromFile();
+                    utils.SetWallpaper();
+                }                    
             }
         }
 
